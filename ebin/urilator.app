@@ -1,5 +1,5 @@
-{application,httpation_uri,
+{application,urilator,
              [{description,"URI parser"},
               {vsn,"0.1.0"},
               {applications,[stdlib,kernel,sasl]},
-              {modules,[httpation_uri]}]}.
+              {modules,[urilator]}]}.
