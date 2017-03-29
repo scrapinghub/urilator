@@ -285,6 +285,8 @@ consume_qs(Acc, Parts, <<"">>, URI) ->
 consume_qs(<<"">>, Parts, <<"#", Rest/binary>>, URI) ->
     QS = lists:reverse(Parts),
     consume_fragment(<<"">>, Rest, URI#uri{qs = QS});
+consume_qs(<<"">>, _Parts, <<"&", Rest/binary>>, URI) ->
+    consume_qs(<<"">>, [{<<>>,<<>>}], Rest, URI);
 consume_qs(Acc, Parts, <<"#", Rest/binary>>, URI) ->
     Q = Acc,
     Part = {Q, <<"">>},
@@ -370,7 +372,12 @@ cat_path(Acc, URI = #uri{path = Parts}) ->
 cat_qs(Acc, URI = #uri{qs = []}) ->
     cat_fragment(Acc, URI);
 cat_qs(Acc, URI = #uri{qs = Parts}) ->
-    QS = binary_join([<<Q/binary, "=", S/binary>> || {Q, S} <- Parts], <<"&">>),
+    %% the following lines are useful in to preserve order of & (when there's an empty item before)
+    CatQSFun = fun({<<>>, <<>>}, Acc) -> [<<"">> | Acc];
+                  ({Q,S}, Acc)        -> [<<Q/binary, "=", S/binary>> | Acc]
+               end,
+    QSList = lists:foldr(CatQSFun, [], Parts),
+    QS = binary_join(QSList, <<"&">>),
     cat_fragment(<<Acc/binary, "?", QS/binary>>, URI).
 
 
@@ -523,7 +530,7 @@ path(Binary, URI) ->
 %% @doc
 %% Accept a URI datatype and return its list of queries.
 
-qs(#uri{qs= QS}) -> QS.
+qs(#uri{qs= QS}) -> [KV || KV <- QS, KV =/= {<<>>, <<>>}].
 
 
 -spec qs(Queries, URI) -> NewURI
@@ -697,10 +704,10 @@ to_lower(Binary) -> <<<<(string:to_lower(C))/utf8>> || <<C/utf8>> <= Binary >>.
 
 %% https://coderwall.com/p/746dgg/joining-a-list-of-binaries-in-erlang-92b2817f-28ce-4cb9-aaa0-73d6c00098f7
 -spec binary_join(List :: list(binary()), Separator :: binary()) -> binary().
-binary_join(List, Separator) ->
-    lists:foldl(fun(Item, Acc) ->
-        if
-            bit_size(Acc) > 0 -> <<Acc/binary, Separator/binary, Item/binary>>;
-            true -> Item
-        end
-    end, <<>>, List).
+binary_join([], _Separator) ->
+    <<>>;
+binary_join([Item], _Separator) ->
+    Item;
+binary_join([H | List], Separator) ->
+    Rest = binary_join(List, Separator),
+    <<H/binary, Separator/binary, Rest/binary>>.

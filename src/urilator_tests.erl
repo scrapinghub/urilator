@@ -270,6 +270,17 @@ urilator_test_() ->
             ?assertEqual(default, urilator:port(URI)),
             ?assertEqual([], urilator:qs(URI)),
             ?assertEqual(<<"http://affiliate-program.amazon.com">>, urilator:export(URI))
+        end},
+        {"complex url with empty QS between `?` and `&`", fun() ->
+            {ok, URI} = urilator:new(<<"https://www.amazon.com/b/?&node=5160028011">>),
+            ?assertEqual(<<"https">>, urilator:protocol(URI)),
+            ?assertEqual(<<"">>, urilator:username(URI)),
+            ?assertEqual(<<"">>, urilator:password(URI)),
+            ?assertEqual(<<"www.amazon.com">>, urilator:hostname(URI)),
+            ?assertEqual(<<"b/">>, urilator:path(URI)),
+            ?assertEqual(default, urilator:port(URI)),
+            ?assertEqual(<<"https://www.amazon.com/b/?&node=5160028011">>, urilator:export(URI)),
+            ?assertEqual([{<<"node">>, <<"5160028011">> }], urilator:qs(URI))
         end}
 
     ].
