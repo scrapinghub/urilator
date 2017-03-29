@@ -231,11 +231,11 @@ consume_path(Acc, Parts, <<"">>, URI) ->
     NewParts = [Part | Parts],
     Path = lists:reverse(NewParts),
     {ok, URI#uri{path = Path}};
-consume_path(_, Parts, <<"//", Rest/binary>>, URI) ->
+consume_path(Acc, Parts, <<"//", Rest/binary>>, URI) ->
     %% repeated slash in path
-    %% netloc////////path
+    %% becomes a component instead of division
     %% this removes 1 slash at a time to avoid errors
-    consume_path(<<"">>, Parts, <<"/", Rest/binary>>, URI);
+    consume_path(<<Acc/binary, "//">>, Parts, Rest, URI);
 consume_path(<<"">>, _, <<"/", Rest/binary>>, URI) ->
     %% empty path
     consume_path(<<"">>, [], Rest, URI);
@@ -258,7 +258,8 @@ consume_path(Acc, Parts, <<Letter:1/binary, Rest/binary>>, URI)
              <<"0">> =< Letter, Letter =< <<"9">>;
              Letter == <<"-">>; Letter == <<"_">>;
              Letter == <<".">>; Letter == <<",">>;
-             Letter == <<"%">>; Letter == <<"+">> ->
+             Letter == <<"%">>; Letter == <<"+">>;
+             Letter == <<":">>; Letter == <<"=">> ->
     consume_path(<<Acc/binary, Letter/binary>>, Parts, Rest, URI);
 consume_path(_Acc, _Parts, _Rest, _URI) ->
     {error, path}.

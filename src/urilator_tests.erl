@@ -142,24 +142,10 @@ urilator_test_() ->
             ?assertEqual(<<"https://crawlera-nubela.scrapinghub.com/curl">>, urilator:export(URI))
         end},
 
-        {"multiple / in path", fun() ->
-            {ok, URI1} = urilator:new(<<"https://example-develop.atlassian.net//path">>),
-            {ok, URI2} = urilator:new(<<"https://example-develop.atlassian.net///path">>),
-            {ok, URI3} = urilator:new(<<"https://example-develop.atlassian.net////path">>),
-            {ok, URI4} = urilator:new(<<"https://example-develop.atlassian.net/////path">>),
-            {ok, URI5} = urilator:new(<<"https://example-develop.atlassian.net//////path">>),
-
-            ?assertEqual(<<"path">>, urilator:path(URI1)),
-            ?assertEqual(<<"path">>, urilator:path(URI2)),
-            ?assertEqual(<<"path">>, urilator:path(URI3)),
-            ?assertEqual(<<"path">>, urilator:path(URI4)),
-            ?assertEqual(<<"path">>, urilator:path(URI5))
-        end},
-
         {"splitted path ", fun() ->
-            {ok, URI1} = urilator:new(<<"https://example-develop.atlassian.net//path/path1">>),
-            {ok, URI2} = urilator:new(<<"https://example-develop.atlassian.net///path/path1/path2">>),
-            {ok, URI3} = urilator:new(<<"https://example-develop.atlassian.net////path/path1/path2/path3">>),
+            {ok, URI1} = urilator:new(<<"https://example-develop.atlassian.net/path/path1">>),
+            {ok, URI2} = urilator:new(<<"https://example-develop.atlassian.net/path/path1/path2">>),
+            {ok, URI3} = urilator:new(<<"https://example-develop.atlassian.net/path/path1/path2/path3">>),
 
             ?assertEqual(<<"path/path1">>, urilator:path(URI1)),
             ?assertEqual(<<"path/path1/path2">>, urilator:path(URI2)),
@@ -248,6 +234,30 @@ urilator_test_() ->
             ?assertEqual(default, urilator:port(URI)),
             ?assertEqual([], urilator:qs(URI)),
             ?assertEqual(<<"http://example.net/relative/path">>, urilator:export(URI))
+        end},
+        {"complex url with url in path", fun() ->
+            {ok, URI} = urilator:new(<<"http://contact.meta.ua/register/http://contact.meta.ua/6630420/forum">>),
+
+            ?assertEqual(<<"http">>, urilator:protocol(URI)),
+            ?assertEqual(<<"">>, urilator:username(URI)),
+            ?assertEqual(<<"">>, urilator:password(URI)),
+            ?assertEqual(<<"contact.meta.ua">>, urilator:hostname(URI)),
+            ?assertEqual(<<"register/http://contact.meta.ua/6630420/forum">>, urilator:path(URI)),
+            ?assertEqual(default, urilator:port(URI)),
+            ?assertEqual([], urilator:qs(URI)),
+            ?assertEqual(<<"http://contact.meta.ua/register/http://contact.meta.ua/6630420/forum">>, urilator:export(URI))
+        end},
+        {"complex url with `=` in path", fun() ->
+            {ok, URI} = urilator:new(<<"https://www.amazon.com/gp/help/customer/display.html/ref=footer_cou?ie=UTF8&nodeId=508088">>),
+
+            ?assertEqual(<<"https">>, urilator:protocol(URI)),
+            ?assertEqual(<<"">>, urilator:username(URI)),
+            ?assertEqual(<<"">>, urilator:password(URI)),
+            ?assertEqual(<<"www.amazon.com">>, urilator:hostname(URI)),
+            ?assertEqual(<<"gp/help/customer/display.html/ref=footer_cou">>, urilator:path(URI)),
+            ?assertEqual(default, urilator:port(URI)),
+            ?assertEqual([{<<"ie">>, <<"UTF8">>}, {<<"nodeId">>, <<"508088">>}], urilator:qs(URI)),
+            ?assertEqual(<<"https://www.amazon.com/gp/help/customer/display.html/ref=footer_cou?ie=UTF8&nodeId=508088">>, urilator:export(URI))
         end}
 
     ].
