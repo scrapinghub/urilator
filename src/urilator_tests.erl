@@ -258,6 +258,18 @@ urilator_test_() ->
             ?assertEqual(default, urilator:port(URI)),
             ?assertEqual([{<<"ie">>, <<"UTF8">>}, {<<"nodeId">>, <<"508088">>}], urilator:qs(URI)),
             ?assertEqual(<<"https://www.amazon.com/gp/help/customer/display.html/ref=footer_cou?ie=UTF8&nodeId=508088">>, urilator:export(URI))
+        end},
+        {"complex url", fun() ->
+            {ok, URI} = urilator:new(<<"affiliate-program.amazon.com">>),
+
+            ?assertEqual(<<"http">>, urilator:protocol(URI)),
+            ?assertEqual(<<"">>, urilator:username(URI)),
+            ?assertEqual(<<"">>, urilator:password(URI)),
+            ?assertEqual(<<"affiliate-program.amazon.com">>, urilator:hostname(URI)),
+            ?assertEqual(<<"">>, urilator:path(URI)),
+            ?assertEqual(default, urilator:port(URI)),
+            ?assertEqual([], urilator:qs(URI)),
+            ?assertEqual(<<"http://affiliate-program.amazon.com">>, urilator:export(URI))
         end}
 
     ].

@@ -108,7 +108,8 @@ consume_protocol(Acc, <<"://", Rest/binary>>, URI) ->
 consume_protocol(Acc, <<Letter:1/binary , Rest/binary>>, URI)
         when <<"a">> =< Letter, Letter =< <<"z">>;
              <<"A">> =< Letter, Letter =< <<"Z">>;
-             <<"0">> =< Letter, Letter =< <<"9">> ->
+             <<"0">> =< Letter, Letter =< <<"9">>;
+             <<"-">> =< Letter ->
     consume_protocol(<<Acc/binary, Letter/binary>>, Rest, URI);
 consume_protocol(_Acc, _Rest, _Uri) ->
     {error, scheme}.
