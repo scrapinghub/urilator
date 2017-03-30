@@ -373,9 +373,10 @@ cat_qs(Acc, URI = #uri{qs = []}) ->
     cat_fragment(Acc, URI);
 cat_qs(Acc, URI = #uri{qs = Parts}) ->
     %% the following lines are useful in to preserve order of & (when there's an empty item before)
-    CatQSFun = fun({<<>>, <<>>}, Acc) -> [<<"">> | Acc];
-                  ({Q,S}, Acc)        -> [<<Q/binary, "=", S/binary>> | Acc]
-               end,
+    CatQSFun = fun
+        ({<<>>, <<>>}, TmpAcc) -> [<<"">> | TmpAcc];
+        ({Q,S}, TmpAcc)        -> [<<Q/binary, "=", S/binary>> | TmpAcc]
+    end,
     QSList = lists:foldr(CatQSFun, [], Parts),
     QS = binary_join(QSList, <<"&">>),
     cat_fragment(<<Acc/binary, "?", QS/binary>>, URI).
