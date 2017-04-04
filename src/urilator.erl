@@ -15,6 +15,9 @@
 -export([parse/1]).
 -export([from_kvlist/1]).
 -export([export/1]).
+-export([quote/1]).
+-export([unquote/1]).
+-export([parse_qs/1]).
 
 
 -record(uri, {
@@ -208,6 +211,37 @@ export(#uri{scheme = S, user_info = UI, host = H, port = Po, path = Pa, query_st
     <<Scheme/binary, UserInfo/binary, HostPort/binary, Pa/binary, QString/binary, Fragment/binary>>.
 
 
+-spec quote(Bin) -> NewBin when
+      Bin    :: binary(),
+      NewBin :: binary().
+quote(Bin) ->
+    << <<(urilator_utils:quote(X))/binary>> || <<X:8>> <= Bin >>.
+
+
+-spec unquote(Bin) -> NewBin when
+      Bin    :: binary(),
+      NewBin :: binary().
+unquote(Bin) ->
+    unquote(Bin, <<>>).
+
+
+-spec parse_qs(QueryString) -> KVList when
+      QueryString :: binary(),
+      KVList      :: [{binary(), binary()}].
+%% @doc
+%% @private
+%% Parse query string received after http_uri:parse/1 and return query params
+%% as proplist.
+
+parse_qs(QueryString) when is_binary(QueryString) ->
+    [
+        case urilator_utils:split(RawPair, <<$=>>, 1) of
+            [K]    -> {unquote(K), undefined};
+            [K, V] -> {unquote(K), unquote(V)}
+        end || RawPair <- urilator_utils:split(QueryString, <<$&>>), RawPair /= <<>>
+    ].
+
+
 %% internal funcs
 
 
@@ -337,6 +371,20 @@ parse_fragment(#ps{uri = Uri, bin = Bin}) ->
 
 
 
+-spec unquote(Bin, Acc) -> Unquoted when
+      Bin      :: binary(),
+      Acc      :: binary(),
+      Unquoted :: binary().
+unquote(<<>>, Acc) ->
+    Acc;
+unquote(<<"%", RawH1:8, RawH2:8, Rest/binary>>, Acc) ->
+    H1 = string:to_upper(RawH1), H2 = string:to_upper(RawH2),
+    Char = urilator_utils:unquote(<<"%", H1:8, H2:8>>),
+    unquote(Rest, <<Acc/binary, Char:8>>);
+unquote(<<Char:8, Rest/binary>>, Acc) ->
+    unquote(Rest, <<Acc/binary, Char:8>>).
+
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
@@ -419,6 +467,58 @@ parse_path_test_() ->
             ?assertEqual({<<>>, <<>>}, parse_path(<<"?">>, <<>>)),
             ?assertEqual({<<"path">>, <<"rest">>}, parse_path(<<"path?rest">>, <<>>)),
             ?assertEqual({<<"path">>, <<"?rest">>}, parse_path(<<"path??rest">>, <<>>))
+        end}
+    ].
+
+
+parse_qs_test_() ->
+    [
+        {"empty input is valid", fun() ->
+            ?assertEqual([], parse_qs(<<>>))
+        end},
+        {"parse_qs assumes that query string is already properly extracted", fun() ->
+            ?assertEqual(
+                [{<<"param">>, <<"value">>}, {<<"other">>, <<"1234">>}],
+                parse_qs(<<"param=value&other=1234">>)
+            ),
+            ?assertEqual(
+                [{<<"?param">>, <<"value">>}, {<<"other">>, <<"1234">>}],
+                parse_qs(<<"?param=value&other=1234">>)
+            )
+        end},
+        {"parse_qs should split keys by '=' only once", fun() ->
+            ?assertEqual(
+                [{<<"?param">>, <<"value">>}, {<<"other">>, <<"1234">>}, {<<"foo">>, <<"baz=bar">>}],
+                parse_qs(<<"?param=value&other=1234&foo=baz=bar">>)
+            )
+        end},
+        {"keys without values are valid", fun() ->
+            ?assertEqual(
+                [{<<"?param">>, <<"value">>}, {<<"other">>, <<"1234">>}, {<<"foo">>, <<"baz=bar">>}, {<<"empty">>, undefined}],
+                parse_qs(<<"?param=value&other=1234&foo=baz=bar&empty">>)
+            )
+        end},
+        {"keys with empty values are valid", fun() ->
+            ?assertEqual(
+                [{<<"?param">>, <<"value">>}, {<<"other">>, <<"1234">>}, {<<"foo">>, <<"baz=bar">>}, {<<"empty">>, <<>>}],
+                parse_qs(<<"?param=value&other=1234&foo=baz=bar&empty=">>)
+            )
+        end},
+        {"compex values in keys", fun() ->
+            ?assertEqual(
+                [{<<"bar">>, <<"http://bar.io/?baz=foo">>}],
+                parse_qs(<<"bar=http://bar.io/?baz=foo">>)
+            )
+        end},
+        {"parse qs should unquote values", fun() ->
+            ?assertEqual(
+                [{<<"url">>, <<"https://foo.bar/all">>}, {<<"key">>, <<"value">>}],
+                parse_qs(<<"url=https%3A%2F%2Ffoo.bar%2Fall&key=value">>)
+            )
+        end},
+        {"quote/unquote", fun() ->
+            ?assertEqual(<<"https%3A%2F%2Ffoo.bar%2Fall">>, quote(<<"https://foo.bar/all">>)),
+            ?assertEqual(<<"https://foo.bar/all">>, unquote(<<"https%3A%2F%2Ffoo.bar%2Fall">>))
         end}
     ].
 
