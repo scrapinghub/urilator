@@ -10,3 +10,8 @@ doc/*.css
 rel/example_project
 .concrete/DEV_MODE
 .rebar
+*.swp
+*.swo
+.erlang.mk
+ebin
+urilator.d
