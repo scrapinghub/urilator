@@ -515,6 +515,10 @@ parse_qs_test_() ->
                 [{<<"url">>, <<"https://foo.bar/all">>}, {<<"key">>, <<"value">>}],
                 parse_qs(<<"url=https%3A%2F%2Ffoo.bar%2Fall&key=value">>)
             )
+        end},
+        {"quote/unquote", fun() ->
+            ?assertEqual(<<"https%3A%2F%2Ffoo.bar%2Fall">>, quote(<<"https://foo.bar/all">>)),
+            ?assertEqual(<<"https://foo.bar/all">>, unquote(<<"https%3A%2F%2Ffoo.bar%2Fall">>))
         end}
     ].
 
