@@ -269,13 +269,13 @@ parse_authority(#ps{uri = Uri, bin = Bin}) ->
 %% parse authority to by picking out user info/host/port
 %% @end
 parse_authority_uihp(Bin) ->
-    {UserInfo, HostPortRest} = case urilator_utils:split(Bin, <<"@">>, 1) of
-        [UInfo, HPRest] -> {UInfo, HPRest};
-        [HPRest]        -> {<<>>, HPRest}
+    {UserInfoHostPort, Rest} = case urilator_utils:split(Bin, <<"/">>, 1) of
+        [UIHP, R] -> {UIHP, <<"/", R/binary>>};
+        [UIHP]    -> {UIHP, <<>>}
     end,
-    {HostPort, Rest} = case urilator_utils:split(HostPortRest, <<"/">>, 1) of
-        [HP, R] -> {HP, <<"/", R/binary>>};
-        [HP]    -> {HP, <<>>}
+    {UserInfo, HostPort} = case urilator_utils:split(UserInfoHostPort, <<"@">>, 1) of
+        [UInfo, HP] -> {UInfo, HP};
+        [HP]        -> {<<>>, HP}
     end,
     {Host, RawPort} = case urilator_utils:split(HostPort, <<":">>, 1) of
         [H, P] -> {H, P};
@@ -392,10 +392,16 @@ parse_authority_uihp_test_() ->
                 parse_authority_uihp(<<":port">>)
             )
         end},
-        {"user info contains '/' and ':', path contains '@' and ':'", fun() ->
+        {"user info contains ':', path contains '@' and ':'", fun() ->
             ?assertEqual(
-                {<<"userinfo:/">>, <<"host">>, <<"port">>, <<"/path#@:">>},
-                parse_authority_uihp(<<"userinfo:/@host:port/path#@:">>)
+                {<<"userinfo:">>, <<"host">>, <<"port">>, <<"/path#@:">>},
+                parse_authority_uihp(<<"userinfo:@host:port/path#@:">>)
+            )
+        end},
+        {"path contains '@', no user info presented", fun() ->
+            ?assertEqual(
+                {<<>>, <<"host">>, <<>>, <<"/path@:/">>},
+                parse_authority_uihp(<<"host/path@:/">>)
             )
         end},
         {"empty authority is valid(only path)", fun() ->
