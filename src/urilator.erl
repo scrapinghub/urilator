@@ -258,6 +258,9 @@ parse_scheme(#ps{uri = Uri, bin = Bin}) ->
       Acc    :: binary(),
       Scheme :: binary(),
       Rest   :: binary().
+parse_scheme(Bin = <<"/", _/binary>>, Acc) ->
+    %% relative path
+    {<<>>, <<Acc/binary, Bin/binary>>};
 parse_scheme(Bin = <<":", _/binary>>, <<>>) ->
     %% scheme should contain at least 1 char
     {<<>>, Bin};
@@ -519,6 +522,35 @@ parse_qs_test_() ->
         {"quote/unquote", fun() ->
             ?assertEqual(<<"https%3A%2F%2Ffoo.bar%2Fall">>, quote(<<"https://foo.bar/all">>)),
             ?assertEqual(<<"https://foo.bar/all">>, unquote(<<"https%3A%2F%2Ffoo.bar%2Fall">>))
+        end}
+    ].
+
+
+parse_test_() ->
+    [
+        {"parse relative path started with '/'", fun() ->
+            {ok, Uri} = urilator:parse(<<"/fetch?url=http://httpbin.scrapinghub.com/status/200">>),
+            ?assertEqual(<<>>, urilator:scheme(Uri)),
+            ?assertEqual(<<>>, urilator:host(Uri)),
+            ?assertEqual(undefined, urilator:port(Uri)),
+            ?assertEqual(<<"/fetch">>, urilator:path(Uri)),
+            ?assertEqual(<<"url=http://httpbin.scrapinghub.com/status/200">>, urilator:query_string(Uri))
+        end},
+        {"parse relative path which not started with '/'", fun() ->
+            {ok, Uri} = urilator:parse(<<"relative/fetch?url=http://httpbin.scrapinghub.com/status/200">>),
+            ?assertEqual(<<>>, urilator:scheme(Uri)),
+            ?assertEqual(<<>>, urilator:host(Uri)),
+            ?assertEqual(undefined, urilator:port(Uri)),
+            ?assertEqual(<<"relative/fetch">>, urilator:path(Uri)),
+            ?assertEqual(<<"url=http://httpbin.scrapinghub.com/status/200">>, urilator:query_string(Uri))
+        end},
+        {"parse uri without scheme", fun() ->
+            {ok, Uri} = urilator:parse(<<"//authority/fetch?url=http://httpbin.scrapinghub.com/status/200">>),
+            ?assertEqual(<<>>, urilator:scheme(Uri)),
+            ?assertEqual(<<"authority">>, urilator:host(Uri)),
+            ?assertEqual(undefined, urilator:port(Uri)),
+            ?assertEqual(<<"/fetch">>, urilator:path(Uri)),
+            ?assertEqual(<<"url=http://httpbin.scrapinghub.com/status/200">>, urilator:query_string(Uri))
         end}
     ].
 
