@@ -215,14 +215,14 @@ export(#uri{scheme = S, user_info = UI, host = H, port = Po, path = Pa, query_st
       Bin    :: binary(),
       NewBin :: binary().
 quote(Bin) ->
-    {error, not_implemented}.
+    << <<(urilator_utils:quote(X))/binary>> || <<X:8>> <= Bin >>.
 
 
 -spec unquote(Bin) -> NewBin when
       Bin    :: binary(),
       NewBin :: binary().
 unquote(Bin) ->
-    {error, not_implemented}.
+    unquote(Bin, <<>>).
 
 
 -spec parse_qs(QueryString) -> KVList when
@@ -236,8 +236,8 @@ unquote(Bin) ->
 parse_qs(QueryString) when is_binary(QueryString) ->
     [
         case urilator_utils:split(RawPair, <<$=>>, 1) of
-            [K]    -> {K, undefined};
-            [K, V] -> {K, V} %% FIXME: unquote
+            [K]    -> {unquote(K), undefined};
+            [K, V] -> {unquote(K), unquote(V)}
         end || RawPair <- urilator_utils:split(QueryString, <<$&>>), RawPair /= <<>>
     ].
 
@@ -371,6 +371,20 @@ parse_fragment(#ps{uri = Uri, bin = Bin}) ->
 
 
 
+-spec unquote(Bin, Acc) -> Unquoted when
+      Bin      :: binary(),
+      Acc      :: binary(),
+      Unquoted :: binary().
+unquote(<<>>, Acc) ->
+    Acc;
+unquote(<<"%", RawH1:8, RawH2:8, Rest/binary>>, Acc) ->
+    H1 = string:to_upper(RawH1), H2 = string:to_upper(RawH2),
+    Char = urilator_utils:unquote(<<"%", H1:8, H2:8>>),
+    unquote(Rest, <<Acc/binary, Char:8>>);
+unquote(<<Char:8, Rest/binary>>, Acc) ->
+    unquote(Rest, <<Acc/binary, Char:8>>).
+
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
@@ -499,7 +513,7 @@ parse_qs_test_() ->
         {"parse qs should unquote values", fun() ->
             ?assertEqual(
                 [{<<"url">>, <<"https://foo.bar/all">>}, {<<"key">>, <<"value">>}],
-                parse_qs(<<"/check?url=https%3A%2F%2Ffoo.bar%2Fall&key=value">>)
+                parse_qs(<<"url=https%3A%2F%2Ffoo.bar%2Fall&key=value">>)
             )
         end}
     ].
