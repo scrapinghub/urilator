@@ -306,8 +306,10 @@ parse_authority(#ps{uri = Uri, bin = Bin}) ->
 %% parse authority to by picking out user info/host/port
 %% @end
 parse_authority_uihp(Bin) ->
-    {UserInfoHostPort, Rest} = case urilator_utils:split(Bin, <<"/">>, 1) of
-        [UIHP, R] -> {UIHP, <<"/", R/binary>>};
+    {UserInfoHostPort, Rest} = case binary:split(Bin, [<<"/">>, <<"?">>]) of
+        [UIHP, R] ->
+            S = binary:at(Bin,size(UIHP)),
+            {UIHP, <<S, R/binary>>};
         [UIHP]    -> {UIHP, <<>>}
     end,
     {UserInfo, HostPort} = case urilator_utils:split(UserInfoHostPort, <<"@">>, 1) of
@@ -319,7 +321,6 @@ parse_authority_uihp(Bin) ->
         [H]    -> {H, <<>>}
     end,
     {UserInfo, Host, RawPort, Rest}.
-
 
 
 -spec parse_path(ParseState) -> {ok, NewParseState} when
@@ -551,6 +552,15 @@ parse_test_() ->
             ?assertEqual(undefined, urilator:port(Uri)),
             ?assertEqual(<<"/fetch">>, urilator:path(Uri)),
             ?assertEqual(<<"url=http://httpbin.scrapinghub.com/status/200">>, urilator:query_string(Uri))
+        end},
+        {"parse uri without path but with query", fun() ->
+            {ok, Uri} = urilator:parse(<<"http://foo.io?wut=wat">>),
+            ?assertMatch(
+                #uri{scheme = <<"http">>,user_info = <<>>,
+                     host = <<"foo.io">>,port = undefined,path = <<>>,
+                     query_string = <<"wut=wat">>,fragment = <<>>},
+                Uri
+            )
         end}
     ].
 
