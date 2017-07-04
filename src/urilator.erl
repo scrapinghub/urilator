@@ -18,6 +18,7 @@
 -export([quote/1]).
 -export([unquote/1]).
 -export([parse_qs/1]).
+-export([build_query_string/1]).
 
 
 -record(uri, {
@@ -128,6 +129,7 @@ query_string(QueryString, Uri) when is_binary(QueryString) -> Uri#uri{query_stri
 
 
 
+
 -spec fragment(Uri) -> Fragment when
       Uri    :: uri(),
       Fragment :: binary().
@@ -144,6 +146,18 @@ fragment(Fragment, Uri) when is_binary(Fragment) -> Uri#uri{fragment = Fragment}
 
 
 %% API funcs
+-spec build_query_string(QueryStringList) -> QueryString when
+    QueryStringList :: [binary()],
+    QueryString     :: binary().
+% Heler function which builds query string from a list of QS params
+build_query_string(QueryStringList) when is_list(QueryStringList) ->
+    QueryString = lists:foldl(
+        fun({Key, Value}, <<>>) -> <<Key/binary, "=", Value/binary>>;
+           ({Key, Value}, Acc)  -> <<Acc/binary, "&", Key/binary, "=", Value/binary>>
+        end,
+        <<>>, QueryStringList),
+    QueryString.
+
 
 -spec parse(RawUri) -> {ok, Uri} | {error, Reason} when
       RawUri :: binary(),
@@ -474,6 +488,18 @@ parse_path_test_() ->
         end}
     ].
 
+build_query_string_test_() ->
+    [
+        {"Basic positive test", fun() ->
+            QueryString = build_query_string(
+                [{<<"param1">>, <<"value1">>}, {<<"param2">>, <<"value2">>}]
+            ),
+
+            ?assertEqual(
+                [{<<"param1">>, <<"value1">>}, {<<"param2">>, <<"value2">>}],
+                parse_qs(QueryString))
+        end}
+    ].
 
 parse_qs_test_() ->
     [
