@@ -1,0 +1,8 @@
+{application, 'urilator', [
+	{description, ""},
+	{vsn, "0.2.3"},
+	{modules, ['publicsuffix','urilator','urilator_utils']},
+	{registered, []},
+	{applications, [kernel,stdlib]},
+	{env, []}
+]}.
